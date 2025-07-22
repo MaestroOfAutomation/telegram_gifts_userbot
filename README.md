@@ -53,6 +53,7 @@ The application is configured using environment variables in the `.env` file:
 
 ### Optional Configuration
 
+- `MAX_GIFTS_TO_BUY`: Maximum number of gifts to buy per client account (default: 1)
 - `TEST_GIFT_ID`: If specified, this gift ID will be included in the filter even if it's already in the cache (set to "none" or leave empty to disable)
 - `TELEGRAM_BOT_TOKEN`: Telegram bot token for sending notifications
 - `TELEGRAM_WARNING_CHANNEL_ID`: Channel ID for warning notifications
@@ -65,7 +66,7 @@ Example:
 ```
 API_ID=12345
 API_HASH=abcdef1234567890abcdef1234567890
-SUPPLY_THRESHOLD=10
+SUPPLY_THRESHOLD=10000
 CHECK_INTERVAL_MS=500
 TELEGRAM_ACCOUNTS=+1234567890:123123123,+0987654321:456456456
 
@@ -78,6 +79,9 @@ TELEGRAM_ERROR_CHANNEL_ID=-4116119115
 # Controller bot settings (optional)
 TELEGRAM_CONTROLLER_BOT_TOKEN=1231231231:AAFj1jijasdfisjdfisjdifjsd
 TELEGRAM_CONTROLLER_CHANNEL_ID=-4116110111
+
+# Maximum gifts to buy per client account
+MAX_GIFTS_TO_BUY=10
 
 # Test gift ID (optional). 5870720080265871962 (sold out)
 TEST_GIFT_ID=
