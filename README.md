@@ -154,11 +154,3 @@ This project follows these code style guidelines:
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-ISC
-
----
-
-*Last updated: July 22, 2025*
