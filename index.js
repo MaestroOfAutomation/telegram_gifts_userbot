@@ -3,6 +3,7 @@ const ClientManager = require('./src/clientManager');
 const GiftService = require('./src/giftService');
 const { logger } = require('./src/logger');
 const TelegramNotifier = require('./src/telegramNotifier');
+const TelegramController = require('./src/telegramController');
 
 /**
  * Main application class
@@ -17,6 +18,7 @@ class Application {
         );
         this.giftService = null;
         this.notifier = null;
+        this.controller = null;
         this.checkInterval = null;
         this.isRunning = false;
     }
@@ -51,11 +53,32 @@ class Application {
         try {
             await this.clientManager.initializeClients();
             
+            // Initialize Telegram controller if enabled
+            if (config.controller && config.controller.enabled) {
+                logger.info('Initializing Telegram controller...');
+                this.controller = new TelegramController(
+                    config.controller,
+                    null, // Will be set after GiftService is created
+                    logger,
+                    this.clientManager // Pass clientManager for sticker downloading
+                );
+                logger.info('Telegram controller initialized');
+            } else {
+                logger.info('Telegram controller disabled');
+            }
+            
+            // Create GiftService with the controller
             this.giftService = new GiftService(
                 this.clientManager, 
                 config, 
-                logger
+                logger,
+                this.controller
             );
+            
+            // Set the giftService in the controller
+            if (this.controller) {
+                this.controller.giftService = this.giftService;
+            }
             
             logger.warning('Initialization complete!');
             return true;
@@ -68,7 +91,7 @@ class Application {
     /**
      * Start the gift monitoring process
      */
-    start() {
+    async start() {
         if (this.isRunning) {
             logger.info('Application is already running');
             return;
@@ -77,10 +100,27 @@ class Application {
         logger.info('Starting gift monitoring...');
         this.isRunning = true;
 
-        this.giftService.checkAndPurchaseGifts()
-            .catch(error => {
-                logger.error('Error during initial gift check:', error);
-            });
+        const startupPromises = [];
+        
+        if (this.controller) {
+            try {
+                logger.info('Starting Telegram controller...');
+                startupPromises.push(this.controller.start());
+            } catch (error) {
+                logger.error('Failed to start Telegram controller:', error);
+            }
+        }
+        
+        logger.info('Performing initial gift check...');
+        startupPromises.push(
+            this.giftService.checkAndPurchaseGifts()
+                .catch(error => {
+                    logger.error('Error during initial gift check:', error);
+                })
+        );
+        
+        await Promise.all(startupPromises);
+        logger.info('All startup tasks completed');
 
         this.checkInterval = setInterval(() => {
             if (!this.isRunning) return;
@@ -116,6 +156,15 @@ class Application {
 
         if (this.notifier) {
             this.notifier.warning('Gift monitoring stopped');
+        }
+
+        if (this.controller) {
+            try {
+                await this.controller.stop();
+                logger.info('Telegram controller stopped');
+            } catch (error) {
+                logger.error('Failed to stop Telegram controller:', error);
+            }
         }
 
         await this.clientManager.disconnectAll();
@@ -156,7 +205,7 @@ async function main() {
 
     const initialized = await app.initialize();
     if (initialized) {
-        app.start();
+        await app.start();
     } else {
         logger.error('Failed to initialize application. Exiting...');
         process.exit(1);

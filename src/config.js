@@ -41,17 +41,26 @@ const telegramChannelIds = {
     ERROR: process.env.TELEGRAM_ERROR_CHANNEL_ID
 };
 
+const telegramControllerBotToken = process.env.TELEGRAM_CONTROLLER_BOT_TOKEN;
+const telegramControllerChannelId = process.env.TELEGRAM_CONTROLLER_CHANNEL_ID;
+
 const config = {
     apiId,
     apiHash,
-    supplyThreshold: parseInt(process.env.SUPPLY_THRESHOLD || '10', 10),
+    supplyThreshold: parseInt(process.env.SUPPLY_THRESHOLD || '2000', 10),
     checkIntervalMs: parseInt(process.env.CHECK_INTERVAL_MS || '500', 10),
+    maxGiftsToBuy: parseInt(process.env.MAX_GIFTS_TO_BUY || '30', 10),
     accounts: parseTelegramAccounts(),
     testGiftId: hasTestGiftId ? testGiftId : null,
     notifications: {
         enabled: !!telegramBotToken && (!!telegramChannelIds.INFO || !!telegramChannelIds.SUCCESS || !!telegramChannelIds.ERROR),
         botToken: telegramBotToken,
         channelIds: telegramChannelIds
+    },
+    controller: {
+        enabled: !!telegramControllerBotToken && !!telegramControllerChannelId,
+        botToken: telegramControllerBotToken,
+        channelId: telegramControllerChannelId
     }
 };
 

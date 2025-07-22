@@ -6,14 +6,18 @@ class GiftService {
      * @param {import('./clientManager')} clientManager
      * @param {Object} config
      * @param {import('./logger').Logger} logger
+     * @param {import('./telegramController')} [telegramController] - Optional Telegram controller for notifications
      */
-    constructor(clientManager, config, logger) {
+    constructor(clientManager, config, logger, telegramController = null) {
         this.clientManager = clientManager;
         this.config = config;
         this.logger = logger;
+        this.telegramController = telegramController;
         this.isCheckingGifts = false;
         this.lastCheckTime = 0;
         this.giftIdsCache = new Set();
+        this.giftsMap = new Map(); // Store full gift objects by ID
+        this.testGiftProcessed = false; // Flag to track if test gift has been processed
     }
 
     /**
@@ -44,18 +48,33 @@ class GiftService {
             if (isFirstRun) {
                 this.logger.info('First run: caching all gift IDs...');
                 for (const gift of availableGifts) {
-                    this.giftIdsCache.add(gift.id.toString());
+                    const giftId = gift.id.toString();
+                    this.giftIdsCache.add(giftId);
+                    this.giftsMap.set(giftId, gift);
                 }
                 this.logger.info(`Cached ${this.giftIdsCache.size} gift IDs.`);
             } else {
                 const testGiftId = this.config.testGiftId;
                 const newGifts = availableGifts.filter(
                     gift => !this.giftIdsCache.has(gift.id.toString()) ||
-                        (testGiftId && gift.id.toString() === testGiftId)
+                        (testGiftId && gift.id.toString() === testGiftId && !this.testGiftProcessed)
                 );
+                
+                // Mark test gift as processed if it was included in newGifts
+                if (testGiftId && newGifts.some(gift => gift.id.toString() === testGiftId)) {
+                    this.testGiftProcessed = true;
+                    this.logger.info(`Test gift with ID ${testGiftId} marked as processed`);
+                }
 
                 for (const gift of newGifts) {
-                    this.giftIdsCache.add(gift.id.toString());
+                    const giftId = gift.id.toString();
+                    this.giftIdsCache.add(giftId);
+                    this.giftsMap.set(giftId, gift);
+                    
+                    // Notify about new gift via Telegram controller (non-blocking)
+                    // Use Promise to run in background without awaiting or catching errors in the main flow
+                    Promise.resolve().then(() => this.notifyNewGift(gift))
+                        .catch(error => this.logger.error('Background notification error:', error));
                 }
 
                 if (newGifts.length > 0) {
@@ -86,44 +105,101 @@ class GiftService {
 
     /**
      * Purchase gifts using all available clients
-     * @param {Array} lowSupplyGifts
+     * @param {Array|string} giftsOrGiftId - Array of gift objects or a single gift ID
+     * @param {number} [quantity=0] - Number of gifts to purchase (0 means all available)
      * @returns {Promise<void>}
      */
-    async purchaseGiftsWithAllClients(lowSupplyGifts) {
+    async purchaseGiftsWithAllClients(giftsOrGiftId, quantity = 0) {
         const clients = this.clientManager.getAllClients();
         const purchasePromises = [];
+        let gifts = [];
 
-        for (const client of clients) {
-            const giftOption = lowSupplyGifts[0];
+        // Handle both array of gifts and single gift ID
+        if (Array.isArray(giftsOrGiftId)) {
+            gifts = giftsOrGiftId;
+        } else {
+            const giftId = giftsOrGiftId.toString();
+            const gift = this.giftsMap.get(giftId);
+            
+            if (!gift) {
+                this.logger.error(`Gift with ID ${giftId} not found in cache`);
+                return;
+            }
+            
+            gifts = [gift];
+        }
 
-            this.logger.warning(
-                `Starting purchase attempts for gift: ${giftOption.title} (ID: ${giftOption.id})`,
-                giftOption
+        if (gifts.length === 0) {
+            this.logger.warning('No gifts to purchase');
+            return;
+        }
+
+        const giftOption = gifts[0];
+        
+        this.logger.warning(
+            `Starting purchase attempts for gift: ${giftOption.title} (ID: ${giftOption.id})`,
+            {
+                gift: giftOption,
+                quantity: quantity > 0 ? quantity : 'all available'
+            }
+        );
+
+        // Determine how many clients to use and gifts per client
+        let clientsToUse = clients;
+        const maxGiftsToBuy = this.config.maxGiftsToBuy || 1;
+        
+        if (quantity > 0) {
+            // Calculate how many clients we need based on quantity and maxGiftsToBuy
+            const totalGiftsToBuy = quantity;
+            const giftsPerClient = maxGiftsToBuy;
+            const numClientsNeeded = Math.ceil(totalGiftsToBuy / giftsPerClient);
+            
+            // Don't use more clients than available
+            const actualClientsToUse = Math.min(numClientsNeeded, clients.length);
+            clientsToUse = clients.slice(0, actualClientsToUse);
+            
+            this.logger.info(
+                `Using ${actualClientsToUse} clients to purchase ${quantity} gifts (up to ${maxGiftsToBuy} per client)`
             );
+        }
 
-            purchasePromises.push(this.purchaseGift(client, giftOption));
+        for (const client of clientsToUse) {
+            let giftsForThisClient = maxGiftsToBuy;
+            
+            if (quantity > 0) {
+                const remainingGifts = quantity - purchasePromises.length * maxGiftsToBuy;
+                if (remainingGifts < maxGiftsToBuy) {
+                    giftsForThisClient = Math.max(remainingGifts, 0);
+                }
+            }
+            
+            if (giftsForThisClient > 0) {
+                purchasePromises.push(this.purchaseGift(client, giftOption, giftsForThisClient));
+            }
         }
 
         await Promise.allSettled(purchasePromises);
     }
 
     /**
-     * Purchase a gift using the specified client
+     * Purchase gifts using the specified client
      * @param {import('@mtcute/node').TelegramClient} client
      * @param {Object} giftOption
+     * @param {number} [quantity=1] - Number of gifts to purchase with this client
      * @returns {Promise<void>}
      */
-    async purchaseGift(client, giftOption) {
+    async purchaseGift(client, giftOption, quantity = 1) {
         try {
             const me = this.clientManager.getUserInfo(client);
             const targetChannelId = this.clientManager.getTargetChannelId(client);
-            const userIdentifier = me.username || me.firstName || me.id;
+            const userIdentifier = me.username || me.id;
 
             this.logger.warning(
-                `Attempting to purchase gift with account ${userIdentifier} for channel ${targetChannelId}...`,
+                `Attempting to purchase ${quantity} gift(s) with account ${userIdentifier} for channel ${targetChannelId}...`,
                 {
                     gift: giftOption.title,
                     giftId: giftOption.id,
+                    quantity: quantity,
                     user: userIdentifier,
                     channel: targetChannelId
                 }
@@ -136,16 +212,46 @@ class GiftService {
                 'BALANCE_TOO_LOW'
             ];
 
-            const result = await this._attemptGiftPurchase(
-                client,
-                giftOption,
-                targetChannelId,
-                userIdentifier,
-                maxAttempts,
-                nonRetryableErrors
+            // Attempt to purchase the specified quantity of gifts
+            let successCount = 0;
+            let failureCount = 0;
+            
+            for (let i = 0; i < quantity; i++) {
+                const result = await this._attemptGiftPurchase(
+                    client,
+                    giftOption,
+                    targetChannelId,
+                    userIdentifier,
+                    maxAttempts,
+                    nonRetryableErrors
+                );
+                
+                if (result.success) {
+                    successCount++;
+                } else {
+                    failureCount++;
+                    
+                    // If we hit a non-retryable error, stop trying to purchase more gifts with this client
+                    if (result.shouldStopRetrying) {
+                        this.logger.warning(
+                            `Stopping further gift purchases with account ${userIdentifier} due to non-retryable error`,
+                            { error: result.lastError?.message }
+                        );
+                        break;
+                    }
+                }
+            }
+            
+            this.logger.info(
+                `Gift purchase summary for account ${userIdentifier}: ${successCount} successful, ${failureCount} failed`,
+                {
+                    gift: giftOption.title,
+                    giftId: giftOption.id,
+                    user: userIdentifier,
+                    successCount,
+                    failureCount
+                }
             );
-
-            this._logPurchaseResult(result, giftOption, userIdentifier);
         } catch (error) {
             this.logger.error('Error in purchaseGift:', error);
         }
@@ -276,6 +382,28 @@ class GiftService {
                     error: lastError
                 }
             );
+        }
+    }
+
+    /**
+     * Notify about a new gift via Telegram controller
+     * @param {Object} gift - Gift object
+     * @returns {Promise<void>}
+     */
+    async notifyNewGift(gift) {
+        if (!this.telegramController) {
+            return;
+        }
+
+        try {
+            this.logger.info(`Sending notification for new gift: ${gift.title} (ID: ${gift.id})`);
+            const result = await this.telegramController.sendGiftSticker(gift);
+            
+            if (!result.ok) {
+                this.logger.error(`Failed to send gift notification: ${result.error}`);
+            }
+        } catch (error) {
+            this.logger.error('Error sending gift notification:', error);
         }
     }
 }

@@ -9,6 +9,7 @@ An automated tool for monitoring and purchasing Telegram gifts when their supply
 - Supports multiple Telegram accounts working asynchronously
 - One account checks gift availability, all accounts attempt to purchase gifts to their specific target channels
 - Sends notifications to Telegram channels for important events (warnings, successes, errors)
+- Telegram controller bot that sends stickers for new gifts and provides inline buttons for purchasing
 - Graceful error handling and shutdown
 
 ## Requirements
@@ -57,6 +58,8 @@ The application is configured using environment variables in the `.env` file:
 - `TELEGRAM_WARNING_CHANNEL_ID`: Channel ID for warning notifications
 - `TELEGRAM_SUCCESS_CHANNEL_ID`: Channel ID for success notifications
 - `TELEGRAM_ERROR_CHANNEL_ID`: Channel ID for error notifications
+- `TELEGRAM_CONTROLLER_BOT_TOKEN`: Telegram bot token for the controller bot that sends stickers and provides purchase buttons
+- `TELEGRAM_CONTROLLER_CHANNEL_ID`: Channel ID where the controller bot will send stickers and gift information
 
 Example:
 ```
@@ -71,6 +74,10 @@ TELEGRAM_BOT_TOKEN=1231231231:AAFj1jijasdfisjdfisjdifjsd
 TELEGRAM_WARNING_CHANNEL_ID=-4116110111
 TELEGRAM_SUCCESS_CHANNEL_ID=-4111103118
 TELEGRAM_ERROR_CHANNEL_ID=-4116119115
+
+# Controller bot settings (optional)
+TELEGRAM_CONTROLLER_BOT_TOKEN=1231231231:AAFj1jijasdfisjdfisjdifjsd
+TELEGRAM_CONTROLLER_CHANNEL_ID=-4116110111
 
 # Test gift ID (optional). 5870720080265871962 (sold out)
 TEST_GIFT_ID=
@@ -90,6 +97,10 @@ The application will:
 3. Start monitoring gift availability
 4. Attempt to purchase gifts when their supply is below the threshold
 5. Send notifications to configured Telegram channels (if enabled)
+6. Start the Telegram controller bot (if enabled) that will:
+   - Send stickers for new gifts to the configured channel
+   - Send gift information (ID, title, purchase stars, availability) as a reply to the sticker
+   - Provide inline buttons for purchasing different quantities of the gift (10, 25, 50, 100, or all)
 
 To stop the application, press `Ctrl+C`.
 
@@ -99,17 +110,40 @@ When running the application for the first time, you will be prompted to enter v
 
 ## Notifications
 
+### Log Notifications
+
 The application can send notifications to Telegram channels for important events:
 
 - **Warning notifications**: Sent when the application starts, stops, or finds new gifts
 - **Success notifications**: Sent when a gift is successfully purchased
 - **Error notifications**: Sent when errors occur during gift purchase or other operations
 
-To enable notifications:
+To enable log notifications:
 1. Create a Telegram bot using [@BotFather](https://t.me/BotFather) and get the bot token
 2. Add the bot to the channels where you want to receive notifications
 3. Get the channel IDs for each notification type
-4. Configure the notification settings in the `.env` file
+4. Configure the notification settings in the `.env` file (TELEGRAM_BOT_TOKEN and TELEGRAM_*_CHANNEL_ID variables)
+
+### Controller Bot
+
+The application also includes a Telegram controller bot that:
+
+- Sends stickers for new gifts to a specified channel
+- Provides detailed information about each gift (ID, title, purchase stars, availability)
+- Includes inline buttons for purchasing different quantities of gifts (10, 25, 50, 100, or all)
+
+The controller bot uses an advanced in-memory approach for sending stickers:
+1. Downloads the sticker directly into memory as a buffer using mtcute client
+2. Creates an InputFile from the buffer and sends it using grammy without saving to disk
+3. Falls back to the direct fileId approach if the download fails
+
+This in-memory approach ensures more reliable sticker delivery while being more efficient by avoiding any temporary file operations.
+
+To enable the controller bot:
+1. Create a separate Telegram bot using [@BotFather](https://t.me/BotFather) and get the bot token
+2. Add the bot to the channel where you want to receive gift stickers and information
+3. Make sure the bot has permission to send messages and stickers in the channel
+4. Configure the controller settings in the `.env` file (TELEGRAM_CONTROLLER_BOT_TOKEN and TELEGRAM_CONTROLLER_CHANNEL_ID variables)
 
 ## Notes on Payment
 
@@ -130,6 +164,7 @@ These steps require real payment information and are beyond the scope of this ex
   - `giftService.js`: Handles gift monitoring and purchasing
   - `logger.js`: Provides logging functionality
   - `telegramNotifier.js`: Sends notifications to Telegram channels
+  - `telegramController.js`: Telegram bot that sends stickers and provides purchase buttons
 
 ## Troubleshooting
 
