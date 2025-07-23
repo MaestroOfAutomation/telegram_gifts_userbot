@@ -39,9 +39,18 @@ class GiftService {
 
         try {
             const checkerClient = this.clientManager.getCheckerClient();
+            const userInfo = this.clientManager.getUserInfo(checkerClient);
+            const account = this.clientManager.clientsMap.get(checkerClient);
+            const userIdentifier = userInfo.username || userInfo.id;
 
-            this.logger.info('Checking available gifts...');
+            this.logger.info(`Checking available gifts from account ${userIdentifier} (${account.phoneNumber})...`);
+            
+            const startTime = Date.now();
             const availableGifts = await checkerClient.getStarGiftOptions();
+            const endTime = Date.now();
+            const requestTime = endTime - startTime;
+            
+            this.logger.info(`Gift list request completed in ${requestTime}ms for account ${userIdentifier} (${account.phoneNumber})`);
 
             const isFirstRun = this.giftIdsCache.size === 0;
 
@@ -59,8 +68,7 @@ class GiftService {
                     gift => !this.giftIdsCache.has(gift.id.toString()) ||
                         (testGiftId && gift.id.toString() === testGiftId && !this.testGiftProcessed)
                 );
-                
-                // Mark test gift as processed if it was included in newGifts
+
                 if (testGiftId && newGifts.some(gift => gift.id.toString() === testGiftId)) {
                     this.testGiftProcessed = true;
                     this.logger.info(`Test gift with ID ${testGiftId} marked as processed`);
@@ -147,35 +155,9 @@ class GiftService {
         // Determine how many clients to use and gifts per client
         let clientsToUse = clients;
         const maxGiftsToBuy = this.config.maxGiftsToBuy || 1;
-        
-        if (quantity > 0) {
-            // Calculate how many clients we need based on quantity and maxGiftsToBuy
-            const totalGiftsToBuy = quantity;
-            const giftsPerClient = maxGiftsToBuy;
-            const numClientsNeeded = Math.ceil(totalGiftsToBuy / giftsPerClient);
-            
-            // Don't use more clients than available
-            const actualClientsToUse = Math.min(numClientsNeeded, clients.length);
-            clientsToUse = clients.slice(0, actualClientsToUse);
-            
-            this.logger.info(
-                `Using ${actualClientsToUse} clients to purchase ${quantity} gifts (up to ${maxGiftsToBuy} per client)`
-            );
-        }
 
         for (const client of clientsToUse) {
-            let giftsForThisClient = maxGiftsToBuy;
-            
-            if (quantity > 0) {
-                const remainingGifts = quantity - purchasePromises.length * maxGiftsToBuy;
-                if (remainingGifts < maxGiftsToBuy) {
-                    giftsForThisClient = Math.max(remainingGifts, 0);
-                }
-            }
-            
-            if (giftsForThisClient > 0) {
-                purchasePromises.push(this.purchaseGift(client, giftOption, giftsForThisClient));
-            }
+            purchasePromises.push(this.purchaseGift(client, giftOption, maxGiftsToBuy));
         }
 
         await Promise.allSettled(purchasePromises);
@@ -209,7 +191,8 @@ class GiftService {
             const nonRetryableErrors = [
                 'USAGE_LIMITED',
                 'PREMIUM',
-                'BALANCE_TOO_LOW'
+                'BALANCE_TOO_LOW',
+                'is not found in local cache',
             ];
 
             // Attempt to purchase the specified quantity of gifts

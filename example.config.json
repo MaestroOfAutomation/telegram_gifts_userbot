@@ -1,0 +1,32 @@
+{
+  "supplyThreshold": 10000,
+  "checkIntervalMs": 500,
+  "maxGiftsToBuy": 30,
+  "telegramAccounts": [
+    {
+      "phoneNumber": "+1234567890",
+      "targetChannelId": "-100000000000",
+      "apiId": 12345,
+      "apiHash": "your_api_hash_here"
+    },
+    {
+      "phoneNumber": "+0987654321",
+      "targetChannelId": "-100000000000",
+      "apiId": 12345,
+      "apiHash": "your_api_hash_here"
+    }
+  ],
+  "testGiftId": null,
+  "notifications": {
+    "botToken": "your_bot_token_here",
+    "channelIds": {
+      "WARNING": "-100000000001",
+      "SUCCESS": "-100000000002",
+      "ERROR": "-100000000003"
+    }
+  },
+  "controller": {
+    "botToken": "your_controller_bot_token_here",
+    "channelId": "-100000000004"
+  }
+}

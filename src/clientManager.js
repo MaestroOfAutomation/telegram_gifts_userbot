@@ -10,15 +10,11 @@ const SESSIONS_DIR = path.join(process.cwd(), 'sessions');
  */
 class ClientManager {
     /**
-     * @param {Array<{phoneNumber: string, targetChannelId: BigInt}>} accounts
-     * @param {number} apiId - Common API ID for all clients
-     * @param {string} apiHash - Common API hash for all clients
+     * @param {Array<{phoneNumber: string, targetChannelId: BigInt, apiId: number, apiHash: string}>} accounts
      * @param {import('./logger').Logger} [logger] - Logger instance
      */
-    constructor(accounts, apiId, apiHash, logger = console) {
+    constructor(accounts, logger = console) {
         this.accounts = accounts;
-        this.apiId = apiId;
-        this.apiHash = apiHash;
         this.logger = logger;
         this.clients = [];
         this.clientsMap = new Map();
@@ -41,8 +37,8 @@ class ClientManager {
             const sessionFile = path.join(SESSIONS_DIR, `${account.phoneNumber}.session`);
 
             const client = new TelegramClient({
-                apiId: this.apiId,
-                apiHash: this.apiHash,
+                apiId: account.apiId,
+                apiHash: account.apiHash,
                 storage: sessionFile,
             });
 

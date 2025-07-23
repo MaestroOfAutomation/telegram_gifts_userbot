@@ -12,8 +12,6 @@ class Application {
     constructor() {
         this.clientManager = new ClientManager(
             config.accounts, 
-            config.apiId, 
-            config.apiHash, 
             logger
         );
         this.giftService = null;
@@ -28,10 +26,14 @@ class Application {
      */
     async initialize() {
         logger.info('Initializing Telegram Gift Monitor...');
-        logger.info(`API ID: ${config.apiId}`);
         logger.info(`Supply Threshold: ${config.supplyThreshold}`);
         logger.info(`Check Interval: ${config.checkIntervalMs}ms`);
         logger.info(`Number of accounts: ${config.accounts.length}`);
+        
+        // Log each account's phone number and API ID
+        config.accounts.forEach((account, index) => {
+            logger.info(`Account ${index + 1}: ${account.phoneNumber} (API ID: ${account.apiId})`);
+        });
         
         if (config.notifications && config.notifications.enabled) {
             logger.info('Initializing notification system...');

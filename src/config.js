@@ -1,59 +1,69 @@
-require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 
 /**
- * Parse Telegram accounts from environment variable
- * @returns {Array<{phoneNumber: string, targetChannelId: BigInt}>}
+ * Load configuration from JSON file
+ * @returns {Object} Configuration object
  */
-function parseTelegramAccounts() {
-    const accountsStr = process.env.TELEGRAM_ACCOUNTS || '';
-    if (!accountsStr) {
-        throw new Error('No Telegram accounts configured. Please set TELEGRAM_ACCOUNTS in .env file');
+function loadConfig() {
+    const configPath = path.join(process.cwd(), 'config.json');
+    
+    if (!fs.existsSync(configPath)) {
+        throw new Error('Configuration file not found. Please create config.json in the project root directory.');
     }
+    
+    try {
+        const configData = fs.readFileSync(configPath, 'utf8');
+        return JSON.parse(configData);
+    } catch (error) {
+        throw new Error(`Failed to load configuration: ${error.message}`);
+    }
+}
 
-    return accountsStr.split(',').map(account => {
-        const [phoneNumber, targetChannelId] = account.split(':');
-        
-        if (!phoneNumber || !targetChannelId) {
-            throw new Error(`Invalid account format: ${account}. Expected format: phone_number:target_channel_id`);
+const configData = loadConfig();
+
+/**
+ * Process Telegram accounts from config
+ * @returns {Array<{phoneNumber: string, targetChannelId: BigInt, apiId: number, apiHash: string}>}
+ */
+function processTelegramAccounts() {
+    const accounts = configData.telegramAccounts || [];
+    
+    if (accounts.length === 0) {
+        throw new Error('No Telegram accounts configured. Please add accounts to config.json');
+    }
+    
+    return accounts.map(account => {
+        if (!account.phoneNumber || !account.targetChannelId || !account.apiId || !account.apiHash) {
+            throw new Error(`Invalid account format: ${JSON.stringify(account)}. Each account must have phoneNumber, targetChannelId, apiId, and apiHash.`);
         }
         
         return {
-            phoneNumber: phoneNumber.trim(),
-            targetChannelId: BigInt(targetChannelId.trim())
+            phoneNumber: account.phoneNumber,
+            targetChannelId: BigInt(account.targetChannelId),
+            apiId: account.apiId,
+            apiHash: account.apiHash
         };
     });
 }
 
-const apiId = parseInt(process.env.API_ID || '0', 10);
-const apiHash = process.env.API_HASH || '';
+const testGiftId = configData.testGiftId;
+const hasTestGiftId = testGiftId != null && !Number.isNaN(Number(testGiftId));
 
-if (!apiId || !apiHash) {
-    throw new Error('API_ID and API_HASH must be provided in .env file');
-}
+const telegramBotToken = configData.notifications?.botToken;
+const telegramChannelIds = configData.notifications?.channelIds || {};
 
-const testGiftId = process.env.TEST_GIFT_ID;
-const hasTestGiftId = testGiftId && testGiftId.toLowerCase() !== 'none';
-
-const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
-const telegramChannelIds = {
-    WARNING: process.env.TELEGRAM_WARNING_CHANNEL_ID,
-    SUCCESS: process.env.TELEGRAM_SUCCESS_CHANNEL_ID,
-    ERROR: process.env.TELEGRAM_ERROR_CHANNEL_ID
-};
-
-const telegramControllerBotToken = process.env.TELEGRAM_CONTROLLER_BOT_TOKEN;
-const telegramControllerChannelId = process.env.TELEGRAM_CONTROLLER_CHANNEL_ID;
+const telegramControllerBotToken = configData.controller?.botToken;
+const telegramControllerChannelId = configData.controller?.channelId;
 
 const config = {
-    apiId,
-    apiHash,
-    supplyThreshold: parseInt(process.env.SUPPLY_THRESHOLD || '2000', 10),
-    checkIntervalMs: parseInt(process.env.CHECK_INTERVAL_MS || '500', 10),
-    maxGiftsToBuy: parseInt(process.env.MAX_GIFTS_TO_BUY || '30', 10),
-    accounts: parseTelegramAccounts(),
-    testGiftId: hasTestGiftId ? testGiftId : null,
+    supplyThreshold: configData.supplyThreshold || 2000,
+    checkIntervalMs: configData.checkIntervalMs || 500,
+    maxGiftsToBuy: configData.maxGiftsToBuy || 30,
+    accounts: processTelegramAccounts(),
+    testGiftId: hasTestGiftId ? testGiftId.toString() : null,
     notifications: {
-        enabled: !!telegramBotToken && (!!telegramChannelIds.INFO || !!telegramChannelIds.SUCCESS || !!telegramChannelIds.ERROR),
+        enabled: !!telegramBotToken && (!!telegramChannelIds.WARNING || !!telegramChannelIds.SUCCESS || !!telegramChannelIds.ERROR),
         botToken: telegramBotToken,
         channelIds: telegramChannelIds
     },

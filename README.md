@@ -32,59 +32,75 @@ An automated tool for monitoring and purchasing Telegram gifts when their supply
    npm install
    ```
 
-3. Create a `.env` file based on the provided `.env.example`:
+3. Copy the example configuration file to create your own configuration:
    ```
-   cp .env.example .env
+   cp example.config.json config.json
    ```
 
-4. Edit the `.env` file and add your Telegram account credentials and configuration.
+4. Edit the `config.json` file and add your Telegram account credentials and configuration.
 
 ## Configuration
 
-The application is configured using environment variables in the `.env` file:
+The application is configured using a JSON file (`config.json`) in the project root directory. An example configuration file (`example.config.json`) is provided as a template with placeholder values. The actual `config.json` file is included in `.gitignore` to prevent committing sensitive information to the repository.
 
 ### Required Configuration
 
-- `API_ID`: Common Telegram API ID for all accounts
-- `API_HASH`: Common Telegram API hash for all accounts
-- `SUPPLY_THRESHOLD`: The threshold below which the application will try to purchase gifts
-- `CHECK_INTERVAL_MS`: The interval for checking gift availability (in milliseconds)
-- `TELEGRAM_ACCOUNTS`: A comma-separated list of Telegram accounts in the format `phone_number:target_channel_id` where each account has its own target channel ID
+- `supplyThreshold`: The threshold below which the application will try to purchase gifts
+- `checkIntervalMs`: The interval for checking gift availability (in milliseconds)
+- `telegramAccounts`: An array of Telegram account objects, each containing:
+  - `phoneNumber`: The phone number of the Telegram account
+  - `targetChannelId`: The target channel ID where gifts will be sent
+  - `apiId`: The Telegram API ID for this account
+  - `apiHash`: The Telegram API hash for this account
 
 ### Optional Configuration
 
-- `MAX_GIFTS_TO_BUY`: Maximum number of gifts to buy per client account (default: 1)
-- `TEST_GIFT_ID`: If specified, this gift ID will be included in the filter even if it's already in the cache (set to "none" or leave empty to disable)
-- `TELEGRAM_BOT_TOKEN`: Telegram bot token for sending notifications
-- `TELEGRAM_WARNING_CHANNEL_ID`: Channel ID for warning notifications
-- `TELEGRAM_SUCCESS_CHANNEL_ID`: Channel ID for success notifications
-- `TELEGRAM_ERROR_CHANNEL_ID`: Channel ID for error notifications
-- `TELEGRAM_CONTROLLER_BOT_TOKEN`: Telegram bot token for the controller bot that sends stickers and provides purchase buttons
-- `TELEGRAM_CONTROLLER_CHANNEL_ID`: Channel ID where the controller bot will send stickers and gift information
+- `maxGiftsToBuy`: Maximum number of gifts to buy per client account (default: 1)
+- `testGiftId`: If specified, this gift ID will be included in the filter even if it's already in the cache (set to null to disable). Use `5870720080265871962` for test (it is sold out 10,000 supply gift). Use only string, not integer type!!!
+- `notifications`: Notification settings object:
+  - `botToken`: Telegram bot token for sending notifications
+  - `channelIds`: Object containing channel IDs for different notification types:
+    - `WARNING`: Channel ID for warning notifications
+    - `SUCCESS`: Channel ID for success notifications
+    - `ERROR`: Channel ID for error notifications
+- `controller`: Controller bot settings object:
+  - `botToken`: Telegram bot token for the controller bot that sends stickers and provides purchase buttons
+  - `channelId`: Channel ID where the controller bot will send stickers and gift information
 
 Example:
-```
-API_ID=12345
-API_HASH=abcdef1234567890abcdef1234567890
-SUPPLY_THRESHOLD=10000
-CHECK_INTERVAL_MS=500
-TELEGRAM_ACCOUNTS=+1234567890:123123123,+0987654321:456456456
-
-# Notification settings (optional)
-TELEGRAM_BOT_TOKEN=1231231231:AAFj1jijasdfisjdfisjdifjsd
-TELEGRAM_WARNING_CHANNEL_ID=-4116110111
-TELEGRAM_SUCCESS_CHANNEL_ID=-4111103118
-TELEGRAM_ERROR_CHANNEL_ID=-4116119115
-
-# Controller bot settings (optional)
-TELEGRAM_CONTROLLER_BOT_TOKEN=1231231231:AAFj1jijasdfisjdfisjdifjsd
-TELEGRAM_CONTROLLER_CHANNEL_ID=-4116110111
-
-# Maximum gifts to buy per client account
-MAX_GIFTS_TO_BUY=10
-
-# Test gift ID (optional). 5870720080265871962 (sold out)
-TEST_GIFT_ID=
+```json
+{
+  "supplyThreshold": 10000,
+  "checkIntervalMs": 500,
+  "maxGiftsToBuy": 30,
+  "telegramAccounts": [
+    {
+      "phoneNumber": "+1234567890",
+      "targetChannelId": "-100123123123",
+      "apiId": 12345,
+      "apiHash": "abcdef1234567890abcdef1234567890"
+    },
+    {
+      "phoneNumber": "+0987654321",
+      "targetChannelId": "-100456456456",
+      "apiId": 67890,
+      "apiHash": "fedcba0987654321fedcba0987654321"
+    }
+  ],
+  "testGiftId": null,
+  "notifications": {
+    "botToken": "1231231231:AAFj1jijasdfisjdfisjdifjsd",
+    "channelIds": {
+      "WARNING": "-4116110111",
+      "SUCCESS": "-4111103118",
+      "ERROR": "-4116119115"
+    }
+  },
+  "controller": {
+    "botToken": "1231231231:AAFj1jijasdfisjdfisjdifjsd",
+    "channelId": "-4116110111"
+  }
+}
 ```
 
 ## Usage
@@ -126,7 +142,7 @@ To enable log notifications:
 1. Create a Telegram bot using [@BotFather](https://t.me/BotFather) and get the bot token
 2. Add the bot to the channels where you want to receive notifications
 3. Get the channel IDs for each notification type
-4. Configure the notification settings in the `.env` file (TELEGRAM_BOT_TOKEN and TELEGRAM_*_CHANNEL_ID variables)
+4. Configure the notification settings in the `config.json` file (notifications.botToken and notifications.channelIds)
 
 ### Controller Bot
 
@@ -147,7 +163,7 @@ To enable the controller bot:
 1. Create a separate Telegram bot using [@BotFather](https://t.me/BotFather) and get the bot token
 2. Add the bot to the channel where you want to receive gift stickers and information
 3. Make sure the bot has permission to send messages and stickers in the channel
-4. Configure the controller settings in the `.env` file (TELEGRAM_CONTROLLER_BOT_TOKEN and TELEGRAM_CONTROLLER_CHANNEL_ID variables)
+4. Configure the controller settings in the `config.json` file (controller.botToken and controller.channelId)
 
 ## Notes on Payment
 
@@ -164,7 +180,7 @@ These steps require real payment information and are beyond the scope of this ex
 - `index.js`: Main application entry point
 - `src/`
   - `clientManager.js`: Manages Telegram client connections
-  - `config.js`: Loads and validates configuration from environment variables
+  - `config.js`: Loads and validates configuration from the JSON configuration file
   - `giftService.js`: Handles gift monitoring and purchasing
   - `logger.js`: Provides logging functionality
   - `telegramNotifier.js`: Sends notifications to Telegram channels
@@ -175,7 +191,7 @@ These steps require real payment information and are beyond the scope of this ex
 ### Common Issues
 
 - **Rate limiting**: If you set `CHECK_INTERVAL_MS` too low (< 100ms), you might encounter rate limiting issues with the Telegram API.
-- **Authentication failures**: Make sure your API ID and API Hash are correct. If you're having issues with verification codes, try deleting the session files in the `sessions` directory and authenticating again.
+- **Authentication failures**: Make sure your API ID and API Hash for each account are correct in the `config.json` file. If you're having issues with verification codes, try deleting the session files in the `sessions` directory and authenticating again.
 - **Gift purchase failures**: Some gifts might have restrictions (e.g., requiring Premium) that prevent purchase.
 
 ### Logs

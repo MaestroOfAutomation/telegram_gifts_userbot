@@ -28,7 +28,7 @@ class TelegramController {
         this.isRunning = false;
 
         if (!this.config.enabled) {
-            this.logger.warning('TelegramController: Controller is disabled. Set TELEGRAM_CONTROLLER_BOT_TOKEN and TELEGRAM_CONTROLLER_CHANNEL_ID in .env file to enable it.');
+            this.logger.warning('TelegramController: Controller is disabled. Set controller.botToken and controller.channelId in config.json file to enable it.');
             return;
         }
 
