@@ -42,7 +42,8 @@ function processTelegramAccounts() {
             phoneNumber: account.phoneNumber,
             targetChannelId: BigInt(account.targetChannelId),
             apiId: account.apiId,
-            apiHash: account.apiHash
+            apiHash: account.apiHash,
+            proxy: account.proxy
         };
     });
 }

@@ -52,6 +52,7 @@ The application is configured using a JSON file (`config.json`) in the project r
   - `targetChannelId`: The target channel ID where gifts will be sent
   - `apiId`: The Telegram API ID for this account
   - `apiHash`: The Telegram API hash for this account
+  - `proxy` (optional): HTTP proxy in format "IP:PORT:USERNAME:PASSWORD" (e.g., "123.123.123.123:1234:dddtehni:adddkDDDDzzz")
 
 ### Optional Configuration
 
@@ -78,7 +79,8 @@ Example:
       "phoneNumber": "+1234567890",
       "targetChannelId": "-100123123123",
       "apiId": 12345,
-      "apiHash": "abcdef1234567890abcdef1234567890"
+      "apiHash": "abcdef1234567890abcdef1234567890",
+      "proxy": "123.123.123.123:1234:dddtehni:adddkDDDDzzz"
     },
     {
       "phoneNumber": "+0987654321",
