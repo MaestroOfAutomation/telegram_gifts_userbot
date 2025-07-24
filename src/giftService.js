@@ -154,7 +154,7 @@ class GiftService {
                 }
             );
 
-            const maxGiftsToBuy = this.config.maxGiftsToBuy || 1;
+            const maxGiftsToBuy = quantity || this.config.maxGiftsToBuy || 1;
 
             for (const client of clients) {
                 purchasePromises.push(this.purchaseGift(client, giftOption, maxGiftsToBuy));
