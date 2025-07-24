@@ -121,7 +121,6 @@ class GiftService {
      */
     async purchaseGiftsWithAllClients(giftsOrGiftId, quantity = 0) {
         const clients = this.clientManager.getAllClients();
-        const purchasePromises = [];
         let gifts = [];
 
         // Handle both array of gifts and single gift ID
@@ -145,6 +144,8 @@ class GiftService {
         }
 
         for (const giftOption of gifts) {
+            const purchasePromises = [];
+
             this.logger.warning(
                 `Starting purchase attempts for gift: ${giftOption.title} (ID: ${giftOption.id})`,
                 {
@@ -158,9 +159,9 @@ class GiftService {
             for (const client of clients) {
                 purchasePromises.push(this.purchaseGift(client, giftOption, maxGiftsToBuy));
             }
-        }
 
-        await Promise.allSettled(purchasePromises);
+            await Promise.allSettled(purchasePromises);
+        }
     }
 
     /**
