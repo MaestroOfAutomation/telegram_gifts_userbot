@@ -93,6 +93,8 @@ class GiftService {
                     const lowSupplyGifts = newGifts.filter(gift =>
                         gift.availability && 
                         this.config.supplyThreshold >= (gift.availability.total || 10000000)
+                    ).sort((a, b) =>
+                        ((a.availability.total || 10000000) - (b.availability.total || 10000000) )
                     );
 
                     if (lowSupplyGifts.length > 0) {
