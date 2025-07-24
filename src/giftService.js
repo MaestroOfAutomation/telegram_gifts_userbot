@@ -144,22 +144,20 @@ class GiftService {
             return;
         }
 
-        const giftOption = gifts[0];
-        
-        this.logger.warning(
-            `Starting purchase attempts for gift: ${giftOption.title} (ID: ${giftOption.id})`,
-            {
-                gift: giftOption,
-                quantity: quantity > 0 ? quantity : 'all available'
+        for (const giftOption of gifts) {
+            this.logger.warning(
+                `Starting purchase attempts for gift: ${giftOption.title} (ID: ${giftOption.id})`,
+                {
+                    gift: giftOption,
+                    quantity: quantity > 0 ? quantity : 'all available'
+                }
+            );
+
+            const maxGiftsToBuy = this.config.maxGiftsToBuy || 1;
+
+            for (const client of clients) {
+                purchasePromises.push(this.purchaseGift(client, giftOption, maxGiftsToBuy));
             }
-        );
-
-        // Determine how many clients to use and gifts per client
-        let clientsToUse = clients;
-        const maxGiftsToBuy = this.config.maxGiftsToBuy || 1;
-
-        for (const client of clientsToUse) {
-            purchasePromises.push(this.purchaseGift(client, giftOption, maxGiftsToBuy));
         }
 
         await Promise.allSettled(purchasePromises);
