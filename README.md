@@ -89,7 +89,7 @@ Example:
       "apiHash": "fedcba0987654321fedcba0987654321"
     }
   ],
-  "testGiftId": null,
+  "testGiftId": "5870720080265871962",
   "notifications": {
     "botToken": "1231231231:AAFj1jijasdfisjdfisjdifjsd",
     "channelIds": {
