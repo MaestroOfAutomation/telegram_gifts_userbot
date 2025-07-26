@@ -36,9 +36,6 @@ coverage/
 # Output of 'npm pack'
 *.tgz
 
-# Profiles. Which profiles? Secret
-profiles.db
-
 # IDE files
 .idea/
 .vscode/

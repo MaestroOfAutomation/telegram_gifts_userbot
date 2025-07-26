@@ -24,7 +24,7 @@ const configData = loadConfig();
 
 /**
  * Process Telegram accounts from config
- * @returns {Array<{phoneNumber: string, targetChannelId: BigInt, apiId: number, apiHash: string}>}
+ * @returns {Array<{phoneNumber: string, targetPeerId: BigInt, apiId: number, apiHash: string}>}
  */
 function processTelegramAccounts() {
     const accounts = configData.telegramAccounts || [];
@@ -34,13 +34,13 @@ function processTelegramAccounts() {
     }
     
     return accounts.map(account => {
-        if (!account.phoneNumber || !account.targetChannelId || !account.apiId || !account.apiHash) {
-            throw new Error(`Invalid account format: ${JSON.stringify(account)}. Each account must have phoneNumber, targetChannelId, apiId, and apiHash.`);
+        if (!account.phoneNumber || !account.targetPeerId || !account.apiId || !account.apiHash) {
+            throw new Error(`Invalid account format: ${JSON.stringify(account)}. Each account must have phoneNumber, targetPeerId, apiId, and apiHash.`);
         }
         
         return {
             phoneNumber: account.phoneNumber,
-            targetChannelId: BigInt(account.targetChannelId),
+            targetPeerId: BigInt(account.targetPeerId),
             apiId: account.apiId,
             apiHash: account.apiHash,
             proxy: account.proxy
@@ -58,9 +58,10 @@ const telegramControllerBotToken = configData.controller?.botToken;
 const telegramControllerChannelId = configData.controller?.channelId;
 
 const config = {
-    supplyThreshold: configData.supplyThreshold || 2000,
+    maxGiftSupply: configData.maxGiftSupply || 2000,
     checkIntervalMs: configData.checkIntervalMs || 500,
     maxGiftsToBuy: configData.maxGiftsToBuy || 30,
+    autoBuyEnabled: configData.autoBuyEnabled !== undefined ? configData.autoBuyEnabled : true,
     accounts: processTelegramAccounts(),
     testGiftId: hasTestGiftId ? testGiftId.toString() : null,
     notifications: {

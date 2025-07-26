@@ -13,7 +13,7 @@ const SESSIONS_DIR = path.join(process.cwd(), 'sessions');
  */
 class ClientManager {
     /**
-     * @param {Array<{phoneNumber: string, targetChannelId: BigInt, apiId: number, apiHash: string, proxy?: string}>} accounts - Array of account configurations
+     * @param {Array<{phoneNumber: string, targetPeerId: BigInt, apiId: number, apiHash: string, proxy?: string}>} accounts - Array of account configurations
      * @param {import('./logger').Logger} [logger] - Logger instance
      */
     constructor(accounts, logger = console) {
@@ -210,16 +210,16 @@ class ClientManager {
     }
 
     /**
-     * Get the target channel ID for a specific client
+     * Get the target peer ID for a specific client
      * @param {TelegramClient} client
-     * @returns {BigInt} The target channel ID for the client
+     * @returns {BigInt} The target peer ID for the client
      */
-    getTargetChannelId(client) {
+    getTargetPeerId(client) {
         const account = this.clientsMap.get(client);
         if (!account) {
             throw new Error('Client not found in client manager');
         }
-        return account.targetChannelId;
+        return account.targetPeerId;
     }
 
     /**

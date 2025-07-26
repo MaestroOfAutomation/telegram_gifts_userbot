@@ -78,32 +78,23 @@ class GiftService {
                     const giftId = gift.id.toString();
                     this.giftIdsCache.add(giftId);
                     this.giftsMap.set(giftId, gift);
-                    
-                    // Notify about new gift via Telegram controller (non-blocking)
-                    // Use Promise to run in background without awaiting or catching errors in the main flow
+
+                    this.logger.warning(`Found new gift`, gift);
                     Promise.resolve().then(() => this.notifyNewGift(gift))
                         .catch(error => this.logger.error('Background notification error:', error));
                 }
 
-                if (newGifts.length > 0) {
-                    for (const gift of newGifts) {
-                        this.logger.warning(`Found new gift`, gift);
-                    }
-
+                if (this.config.autoBuyEnabled && newGifts.length > 0) {
                     const lowSupplyGifts = newGifts.filter(gift =>
                         gift.availability && 
-                        this.config.supplyThreshold >= (gift.availability.total || 10000000)
+                        this.config.maxGiftSupply >= (gift.availability.total || 10000000)
                     ).sort((a, b) =>
                         ((a.availability.total || 10000000) - (b.availability.total || 10000000) )
                     );
 
                     if (lowSupplyGifts.length > 0) {
                         await this.purchaseGiftsWithAllClients(lowSupplyGifts);
-                    } else {
-                        this.logger.info('No new gifts with low supply found.');
                     }
-                } else {
-                    this.logger.info('No new gifts found.');
                 }
             }
         } catch (error) {
@@ -174,17 +165,17 @@ class GiftService {
     async purchaseGift(client, giftOption, quantity = 1) {
         try {
             const me = this.clientManager.getUserInfo(client);
-            const targetChannelId = this.clientManager.getTargetChannelId(client);
+            const targetPeerId = this.clientManager.getTargetPeerId(client);
             const userIdentifier = me.username || me.id;
 
             this.logger.warning(
-                `Attempting to purchase ${quantity} gift(s) with account ${userIdentifier} for channel ${targetChannelId}...`,
+                `Attempting to purchase ${quantity} gift(s) with account ${userIdentifier} for peer ${targetPeerId}...`,
                 {
                     gift: giftOption.title,
                     giftId: giftOption.id,
                     quantity: quantity,
                     user: userIdentifier,
-                    channel: targetChannelId
+                    peerId: targetPeerId
                 }
             );
 
@@ -204,7 +195,7 @@ class GiftService {
                 const result = await this._attemptGiftPurchase(
                     client,
                     giftOption,
-                    targetChannelId,
+                    targetPeerId,
                     userIdentifier,
                     maxAttempts,
                     nonRetryableErrors
@@ -246,13 +237,13 @@ class GiftService {
      * @private
      * @param {import('@mtcute/node').TelegramClient} client
      * @param {Object} giftOption
-     * @param {number} targetChannelId
+     * @param {number} targetPeerId
      * @param {string} userIdentifier
      * @param {number} maxAttempts
      * @param {string[]} nonRetryableErrors
      * @returns {Object} Result object containing success status, attempts, and error info
      */
-    async _attemptGiftPurchase(client, giftOption, targetChannelId, userIdentifier, maxAttempts, nonRetryableErrors) {
+    async _attemptGiftPurchase(client, giftOption, targetPeerId, userIdentifier, maxAttempts, nonRetryableErrors) {
         let attempt = 0;
         let success = false;
         let lastError = null;
@@ -262,7 +253,7 @@ class GiftService {
             attempt++;
             try {
                 await client.sendStarGift({
-                    peerId: Number(targetChannelId),
+                    peerId: Number(targetPeerId),
                     gift: giftOption,
                     anonymous: true,
                 });

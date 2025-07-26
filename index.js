@@ -26,7 +26,7 @@ class Application {
      */
     async initialize() {
         logger.info('Initializing Telegram Gift Monitor...');
-        logger.info(`Supply Threshold: ${config.supplyThreshold}`);
+        logger.info(`Supply Threshold: ${config.maxGiftSupply}`);
         logger.info(`Check Interval: ${config.checkIntervalMs}ms`);
         logger.info(`Number of accounts: ${config.accounts.length}`);
         

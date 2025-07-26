@@ -1,90 +1,94 @@
-# Telegram Gift Monitor
+# Telegram Gifts UserBot
 
-An automated tool for monitoring and purchasing Telegram gifts when their supply is below a specified threshold.
 
-## Features
+Инструмент для автоматического мониторинга и покупки подарков в Telegram на основе пользовательских аккаунтов (не BotAPI)
 
-- Monitors Telegram star gift availability every 0.5 seconds (configurable) using the `getStarGiftOptions` method
-- Purchases gifts when their supply is below a specified threshold
-- Supports multiple Telegram accounts working asynchronously
-- One account checks gift availability, all accounts attempt to purchase gifts to their specific target channels
-- Sends notifications to Telegram channels for important events (warnings, successes, errors)
-- Telegram controller bot that sends stickers for new gifts and provides inline buttons for purchasing
-- Graceful error handling and shutdown
+![Controller Bot Interface](./images/ControllerBot.png)
+## Возможности
 
-## Requirements
+- Мониторит доступность звездных подарков Telegram каждые 0.5 секунды (настраивается) с помощью метода `getStarGiftOptions`
+- Может автоматически скупать подарки, когда их supply ниже указанного порога пользователю / на канал / в группу
+- Поддерживает несколько аккаунтов Telegram, работающих асинхронно
+- Один аккаунт проверяет доступность подарков, все аккаунты пытаются купить подарки для своих целевых каналов
+- Отправляет уведомления в каналы Telegram о важных событиях (предупреждения, успехи, ошибки)
+- Бот-контроллер Telegram, который отправляет стикеры для новых подарков и предоставляет кнопки для покупки со всех аккаунтов
+- Поддержка HTTP Proxy под каждый аккаунт
 
-- Node.js 14.x or higher
-- Telegram API credentials (API ID and API Hash)
-- Telegram accounts that have been authorized to use the API
-- (Optional) Telegram bot for notifications
+## Требования
 
-## Installation
+- Node.js 14.x или выше
+- Учетные данные API Telegram (API ID и API Hash)
+- Аккаунты Telegram, авторизованные для использования API
+- (Опционально) Бот Telegram для уведомлений
 
-1. Clone this repository:
+## Установка
+
+1. Клонируйте этот репозиторий:
    ```
    git clone https://github.com/yourusername/autogiftsnodejs.git
    cd autogiftsnodejs
    ```
 
-2. Install dependencies:
+2. Установите зависимости:
    ```
    npm install
    ```
 
-3. Copy the example configuration file to create your own configuration:
+3. Скопируйте пример конфигурационного файла, чтобы создать свою конфигурацию:
    ```
    cp example.config.json config.json
    ```
 
-4. Edit the `config.json` file and add your Telegram account credentials and configuration.
+4. Отредактируйте файл `config.json` и добавьте учетные данные вашего аккаунта Telegram и конфигурацию.
 
-## Configuration
+## Конфигурация
 
-The application is configured using a JSON file (`config.json`) in the project root directory. An example configuration file (`example.config.json`) is provided as a template with placeholder values. The actual `config.json` file is included in `.gitignore` to prevent committing sensitive information to the repository.
+Приложение настраивается с помощью JSON-файла (`config.json`) в корневом каталоге проекта. Пример конфигурационного файла (`example.config.json`) предоставляется в качестве шаблона с заполнителями. Фактический файл `config.json` включен в `.gitignore`, чтобы предотвратить передачу конфиденциальной информации в репозиторий.
 
-### Required Configuration
+### Обязательная конфигурация
 
-- `supplyThreshold`: The threshold below which the application will try to purchase gifts
-- `checkIntervalMs`: The interval for checking gift availability (in milliseconds)
-- `telegramAccounts`: An array of Telegram account objects, each containing:
-  - `phoneNumber`: The phone number of the Telegram account
-  - `targetChannelId`: The target channel ID where gifts will be sent
-  - `apiId`: The Telegram API ID for this account
-  - `apiHash`: The Telegram API hash for this account
-  - `proxy` (optional): HTTP proxy in format "IP:PORT:USERNAME:PASSWORD" (e.g., "123.123.123.123:1234:dddtehni:adddkDDDDzzz")
+- `maxGiftSupply`: Порог, ниже которого приложение будет пытаться покупать подарки
+- `checkIntervalMs`: Интервал проверки доступности подарков (в миллисекундах)
+- `telegramAccounts`: Массив объектов аккаунтов Telegram, каждый из которых содержит:
+  - `phoneNumber`: Номер телефона аккаунта Telegram
+  - `targetPeerId`: ID получателя, куда будут отправляться подарки - пользователь / канал / группа. Если это канал / группа - пользователь должен в ней состоять.
+  - `apiId`: ID API Telegram для этого аккаунта (https://my.telegram.org/apps)
+  - `apiHash`: Хеш API Telegram для этого аккаунта (https://my.telegram.org/apps)
+  - `proxy` (опционально): HTTP-прокси в формате "IP:PORT:USERNAME:PASSWORD" (например, "123.123.123.123:1234:dddtehni:adddkDDDDzzz")
 
-### Optional Configuration
+### Опциональная конфигурация
 
-- `maxGiftsToBuy`: Maximum number of gifts to buy per client account (default: 1)
-- `testGiftId`: If specified, this gift ID will be included in the filter even if it's already in the cache (set to null to disable). Use `5870720080265871962` for test (it is sold out 10,000 supply gift). Use only string, not integer type!!!
-- `notifications`: Notification settings object:
-  - `botToken`: Telegram bot token for sending notifications
-  - `channelIds`: Object containing channel IDs for different notification types:
-    - `WARNING`: Channel ID for warning notifications
-    - `SUCCESS`: Channel ID for success notifications
-    - `ERROR`: Channel ID for error notifications
-- `controller`: Controller bot settings object:
-  - `botToken`: Telegram bot token for the controller bot that sends stickers and provides purchase buttons
-  - `channelId`: Channel ID where the controller bot will send stickers and gift information
+- `autoBuyEnabled`: Включает или отключает автоматическую покупку подарков (по умолчанию: true). Если установлено значение false, система будет только отправлять уведомления о новых подарках без их покупки.
+- `maxGiftsToBuy`: Максимальное количество подарков для покупки на один клиентский аккаунт (по умолчанию: 1)
+- `testGiftId`: Если указано, этот ID подарка будет включен в фильтр, даже если он уже есть в кеше (установите null для отключения). Используйте `5870720080265871962` для теста (это подарок с запасом 10 000, который распродан). Используйте только строку, а не целочисленный тип!!!
+- `notifications`: Объект настроек уведомлений:
+  - `botToken`: Токен бота Telegram для отправки уведомлений
+  - `channelIds`: Объект, содержащий ID каналов для разных типов уведомлений:
+    - `WARNING`: ID канала для предупреждающих уведомлений
+    - `SUCCESS`: ID канала для уведомлений об успехе
+    - `ERROR`: ID канала для уведомлений об ошибках
+- `controller`: Объект настроек бота-контроллера:
+  - `botToken`: Токен бота Telegram для бота-контроллера, который отправляет стикеры и предоставляет кнопки покупки
+  - `channelId`: ID канала, куда бот-контроллер будет отправлять стикеры и информацию о подарках
 
-Example:
+Пример:
 ```json
 {
-  "supplyThreshold": 10000,
+  "maxGiftSupply": 10000,
   "checkIntervalMs": 500,
   "maxGiftsToBuy": 30,
+  "autoBuyEnabled": true,
   "telegramAccounts": [
     {
       "phoneNumber": "+1234567890",
-      "targetChannelId": "-100123123123",
+      "targetPeerId": "-100123123123",
       "apiId": 12345,
       "apiHash": "abcdef1234567890abcdef1234567890",
       "proxy": "123.123.123.123:1234:dddtehni:adddkDDDDzzz"
     },
     {
       "phoneNumber": "+0987654321",
-      "targetChannelId": "-100456456456",
+      "targetPeerId": "-100456456456",
       "apiId": 67890,
       "apiHash": "fedcba0987654321fedcba0987654321"
     }
@@ -105,109 +109,73 @@ Example:
 }
 ```
 
-## Usage
+## Использование
 
-Start the application:
+Запустите приложение:
 
 ```
 npm start
 ```
 
-The application will:
-1. Initialize Telegram clients for each account
-2. Prompt for verification codes if accounts are not already authorized
-3. Start monitoring gift availability
-4. Attempt to purchase gifts when their supply is below the threshold
-5. Send notifications to configured Telegram channels (if enabled)
-6. Start the Telegram controller bot (if enabled) that will:
-   - Send stickers for new gifts to the configured channel
-   - Send gift information (ID, title, purchase stars, availability) as a reply to the sticker
-   - Provide inline buttons for purchasing different quantities of the gift (10, 25, 50, 100, or all)
+Для остановки приложения нажмите `Ctrl+C`.
+Чтобы остановить приложение, нажмите `Ctrl+C`.
 
-To stop the application, press `Ctrl+C`.
+## Аутентификация
 
-## Authentication
+При первом запуске приложения вам будет предложено ввести коды подтверждения для каждого аккаунта Telegram. Эти коды будут отправлены на ваши аккаунты Telegram. После успешной аутентификации данные сессии будут сохранены в каталоге `sessions`, поэтому вам не нужно будет проходить аутентификацию снова, если данные сессии не будут удалены.
 
-When running the application for the first time, you will be prompted to enter verification codes for each Telegram account. These codes will be sent to your Telegram accounts. After successful authentication, session data will be stored in the `sessions` directory, so you won't need to authenticate again unless the session data is deleted.
+## Уведомления
 
-## Notifications
+### Уведомления журнала
 
-### Log Notifications
+Приложение может отправлять уведомления в каналы Telegram о важных событиях:
 
-The application can send notifications to Telegram channels for important events:
+- **Предупреждающие уведомления**: Отправляются при запуске, остановке приложения или обнаружении новых подарков
+- **Уведомления об успехе**: Отправляются при успешной покупке подарка
+- **Уведомления об ошибках**: Отправляются при возникновении ошибок во время покупки подарка или других операций
 
-- **Warning notifications**: Sent when the application starts, stops, or finds new gifts
-- **Success notifications**: Sent when a gift is successfully purchased
-- **Error notifications**: Sent when errors occur during gift purchase or other operations
+Чтобы включить уведомления журнала:
+1. Создайте бота Telegram с помощью [@BotFather](https://t.me/BotFather) и получите токен бота
+2. Добавьте бота в каналы, где вы хотите получать уведомления
+3. Получите ID каналов для каждого типа уведомлений
+4. Настройте параметры уведомлений в файле `config.json` (notifications.botToken и notifications.channelIds)
 
-To enable log notifications:
-1. Create a Telegram bot using [@BotFather](https://t.me/BotFather) and get the bot token
-2. Add the bot to the channels where you want to receive notifications
-3. Get the channel IDs for each notification type
-4. Configure the notification settings in the `config.json` file (notifications.botToken and notifications.channelIds)
+### Бот-контроллер
 
-### Controller Bot
+Приложение также включает бот-контроллер Telegram, который:
 
-The application also includes a Telegram controller bot that:
+- Отправляет стикеры для новых подарков в указанный канал
+- Предоставляет подробную информацию о каждом подарке (ID, название, стоимость в звездах, доступность)
+- Включает встроенные кнопки для покупки разного количества подарков (10, 25, 50, 100 или все)
 
-- Sends stickers for new gifts to a specified channel
-- Provides detailed information about each gift (ID, title, purchase stars, availability)
-- Includes inline buttons for purchasing different quantities of gifts (10, 25, 50, 100, or all)
+Чтобы включить бот-контроллер:
+1. Создайте отдельного бота Telegram с помощью [@BotFather](https://t.me/BotFather) и получите токен бота
+2. Добавьте бота в канал, где вы хотите получать стикеры подарков и информацию
+3. Убедитесь, что у бота есть разрешение на отправку сообщений и стикеров в канале
+4. Настройте параметры контроллера в файле `config.json` (controller.botToken и controller.channelId)
 
-The controller bot uses an advanced in-memory approach for sending stickers:
-1. Downloads the sticker directly into memory as a buffer using mtcute client
-2. Creates an InputFile from the buffer and sends it using grammy without saving to disk
-3. Falls back to the direct fileId approach if the download fails
+## Структура проекта
 
-This in-memory approach ensures more reliable sticker delivery while being more efficient by avoiding any temporary file operations.
-
-To enable the controller bot:
-1. Create a separate Telegram bot using [@BotFather](https://t.me/BotFather) and get the bot token
-2. Add the bot to the channel where you want to receive gift stickers and information
-3. Make sure the bot has permission to send messages and stickers in the channel
-4. Configure the controller settings in the `config.json` file (controller.botToken and controller.channelId)
-
-## Notes on Payment
-
-This application demonstrates the process of checking gift availability and initiating the purchase process. However, to complete actual purchases, you would need to:
-
-1. Select a payment method
-2. Provide payment credentials
-3. Confirm the payment
-
-These steps require real payment information and are beyond the scope of this example implementation.
-
-## Project Structure
-
-- `index.js`: Main application entry point
+- `index.js`: Основная точка входа приложения
 - `src/`
-  - `clientManager.js`: Manages Telegram client connections
-  - `config.js`: Loads and validates configuration from the JSON configuration file
-  - `giftService.js`: Handles gift monitoring and purchasing
-  - `logger.js`: Provides logging functionality
-  - `telegramNotifier.js`: Sends notifications to Telegram channels
-  - `telegramController.js`: Telegram bot that sends stickers and provides purchase buttons
+  - `clientManager.js`: Управляет соединениями клиентов Telegram
+  - `config.js`: Загружает и проверяет конфигурацию из JSON-файла конфигурации
+  - `giftService.js`: Обрабатывает мониторинг и покупку подарков
+  - `logger.js`: Предоставляет функциональность ведения журнала
+  - `telegramNotifier.js`: Отправляет уведомления в каналы Telegram
+  - `telegramController.js`: Бот Telegram, который отправляет стикеры и предоставляет кнопки покупки
 
-## Troubleshooting
+## Устранение неполадок
 
-### Common Issues
+### Распространенные проблемы
 
-- **Rate limiting**: If you set `CHECK_INTERVAL_MS` too low (< 100ms), you might encounter rate limiting issues with the Telegram API.
-- **Authentication failures**: Make sure your API ID and API Hash for each account are correct in the `config.json` file. If you're having issues with verification codes, try deleting the session files in the `sessions` directory and authenticating again.
-- **Gift purchase failures**: Some gifts might have restrictions (e.g., requiring Premium) that prevent purchase.
+- **Ограничение скорости**: Если вы установите `CHECK_INTERVAL_MS` слишком низким (< 100 мс), вы можете столкнуться с проблемами ограничения скорости с API Telegram.
+- **Сбои аутентификации**: Убедитесь, что ваши API ID и API Hash для каждого аккаунта правильные в файле `config.json`. Если у вас возникают проблемы с кодами подтверждения, попробуйте удалить файлы сессий в каталоге `sessions` и пройти аутентификацию снова.
+- **Сбои покупки подарков**: Некоторые подарки могут иметь ограничения (например, требовать Premium), которые препятствуют покупке.
 
-### Logs
+### Журналы
 
-The application logs information to the console. For more detailed troubleshooting, enable notifications to receive error messages in your Telegram channels.
+Приложение записывает информацию в консоль. Для более подробного устранения неполадок включите уведомления, чтобы получать сообщения об ошибках в ваших каналах Telegram.
+## Вклад в проект
 
-## Code Style
-
-This project follows these code style guidelines:
-- Maximum line length of 100-120 characters
-- Proper line breaks for function calls, object definitions, and conditional statements
-- Consistent indentation throughout the codebase
-- Readable formatting for complex expressions
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+Вклады приветствуются! Пожалуйста, не стесняйтесь отправлять Pull Request.

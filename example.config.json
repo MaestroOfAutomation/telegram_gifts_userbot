@@ -1,18 +1,19 @@
 {
-  "supplyThreshold": 10000,
+  "maxGiftSupply": 10000,
   "checkIntervalMs": 500,
   "maxGiftsToBuy": 30,
+  "autoBuyEnabled": true,
   "telegramAccounts": [
     {
       "phoneNumber": "+1234567890",
-      "targetChannelId": "-100000000000",
+      "targetPeerId": "-100000000000",
       "apiId": 12345,
       "apiHash": "your_api_hash_here",
       "proxy": "123.123.123.123:1234:dddtehni:adddkDDDDzzz"
     },
     {
       "phoneNumber": "+0987654321",
-      "targetChannelId": "-100000000000",
+      "targetPeerId": "-100000000000",
       "apiId": 12345,
       "apiHash": "your_api_hash_here"
     }
