@@ -36,7 +36,7 @@
 
 1. Клонируйте этот репозиторий:
    ```
-   git clone https://github.com/yourusername/autogiftsnodejs.git
+   git clone https://github.com/MaestroOfAutomation/telegram_gifts_userbot.git
    cd autogiftsnodejs
    ```
 
