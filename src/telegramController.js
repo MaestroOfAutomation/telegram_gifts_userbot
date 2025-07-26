@@ -4,7 +4,6 @@
  * Uses mtcute for downloading stickers directly in memory
  */
 const { Bot, InlineKeyboard, InputFile } = require('grammy');
-const { TelegramClient } = require("@mtcute/node");
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
@@ -42,31 +41,10 @@ class TelegramController {
             return;
         }
 
-        // Initialize the bot
         this.bot = new Bot(this.config.botToken);
-        
-        // Set up command handlers
-        this.setupCommandHandlers();
-        
-        // Set up callback query handlers for inline buttons
         this.setupCallbackQueryHandlers();
     }
 
-    /**
-     * Set up command handlers
-     * @private
-     */
-    setupCommandHandlers() {
-        // Handle /start command
-        this.bot.command('start', (ctx) => {
-            ctx.reply('Bot is running. It will send stickers and information about new gifts.');
-        });
-
-        // Handle /help command
-        this.bot.command('help', (ctx) => {
-            ctx.reply('This bot sends stickers and information about new Telegram gifts. You can use the inline buttons to purchase gifts.');
-        });
-    }
 
     /**
      * Set up callback query handlers for inline buttons
@@ -80,11 +58,6 @@ class TelegramController {
                 const [action, giftId, quantity] = data.split(':');
 
                 if (action === 'purchase') {
-                    // await ctx.answerCallbackQuery({
-                    //     text: `Purchasing ${quantity} of gift ${giftId}...`,
-                    //     show_alert: true
-                    // });
-
                     const quantityNum = quantity === 'all' ? 0 : parseInt(quantity, 10);
                     await this.giftService.purchaseGiftsWithAllClients(giftId, quantityNum);
                     
@@ -157,7 +130,6 @@ class TelegramController {
             return { ok: false, error: 'Bot is not initialized or disabled' };
         }
     
-        // Check if bot is running and log a warning if not
         if (!this.isRunning) {
             this.logger.warning('Attempting to send sticker while bot is not running. Will try anyway.');
         }
@@ -169,14 +141,12 @@ class TelegramController {
 
             let stickerMessage;
         
-            // Try the new approach with mtcute if clientManager is available
             if (this.clientManager) {
                 let tempFilename = null;
                 
                 try {
                     this.logger.info('Using mtcute to download and send sticker in-memory');
                 
-                    // Get a client from the clientManager
                     const client = this.clientManager.getCheckerClient();
                     if (!client) {
                         throw new Error('No mtcute client available');
@@ -184,11 +154,9 @@ class TelegramController {
                 
                     this.logger.info(`Downloading sticker with fileId: ${gift.sticker.fileId}`);
                     
-                    // Generate a temporary file with UUID4 filename
                     tempFilename = `${uuidv4()}.tgs`;
                     this.logger.info(`Using temporary file: ${tempFilename}`);
                     
-                    // Download the sticker to the temporary file
                     await client.downloadToFile(
                         tempFilename,
                         gift.sticker.fileId,
@@ -233,14 +201,12 @@ class TelegramController {
                         }
                     }
                 
-                    // Fall back to the original approach
                     stickerMessage = await this.bot.api.sendSticker(
                         this.config.channelId,
                         gift.sticker.fileId
                     );
                 }
             } else {
-                // Use the original approach if clientManager is not available
                 this.logger.info('ClientManager not available, using direct fileId approach');
                 stickerMessage = await this.bot.api.sendSticker(
                     this.config.channelId,
@@ -269,19 +235,15 @@ class TelegramController {
             return { ok: false, error: 'Bot is not initialized or disabled' };
         }
         
-        // Check if bot is running and log a warning if not
         if (!this.isRunning) {
             this.logger.warning('Attempting to send gift info while bot is not running. Will try anyway.');
         }
 
         try {
-            // Create message text with gift information
             const messageText = this.formatGiftInfo(gift);
 
-            // Create inline keyboard with purchase buttons
             const keyboard = this.createPurchaseKeyboard(gift.id);
 
-            // Send the message as a reply to the sticker
             const infoMessage = await this.bot.api.sendMessage(
                 this.config.channelId,
                 messageText,
@@ -331,7 +293,6 @@ class TelegramController {
     createPurchaseKeyboard(giftId) {
         const keyboard = new InlineKeyboard();
 
-        // Add buttons for different quantities
         keyboard
             .text("Buy 10", `purchase:${giftId}:10`).text("Buy 25", `purchase:${giftId}:25`).row()
             .text("Buy 50", `purchase:${giftId}:50`).text("Buy 100", `purchase:${giftId}:100`).row()
