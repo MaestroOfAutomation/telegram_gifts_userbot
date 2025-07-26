@@ -1,9 +1,18 @@
-# Telegram Gifts UserBot
+<p align="center">
+    <a href="https://github.com/MaestroOfAutomation/telegram_gifts_userbot/">
+        <img src="https://raw.githubusercontent.com/MaestroOfAutomation/telegram_gifts_userbot/main/images/Logo.png" alt="logo" title="logo" width="480" /><br/>
+    </a><br/>
+    <b>Инструмент для автоматического мониторинга и покупки подарков в Telegram на основе пользовательских аккаунтов</b>
+    <br>
+    <a href="https://github.com/mtcute/mtcute/">written on mtcute</a>
+    &nbsp;•&nbsp;
+    <a href="https://t.me/maestroofautomation">telegram channel</a>
+    &nbsp;•&nbsp;
+    <a href="https://t.me/maestroautomation">telegram chat</a>
+    <br/><br/>
+</p>
 
 
-Инструмент для автоматического мониторинга и покупки подарков в Telegram на основе пользовательских аккаунтов (не BotAPI)
-
-![Controller Bot Interface](./images/ControllerBot.png)
 ## Возможности
 
 - Мониторит доступность звездных подарков Telegram каждые 0.5 секунды (настраивается) с помощью метода `getStarGiftOptions`
@@ -13,6 +22,8 @@
 - Отправляет уведомления в каналы Telegram о важных событиях (предупреждения, успехи, ошибки)
 - Бот-контроллер Telegram, который отправляет стикеры для новых подарков и предоставляет кнопки для покупки со всех аккаунтов
 - Поддержка HTTP Proxy под каждый аккаунт
+
+<p align="center"><img src="https://raw.githubusercontent.com/MaestroOfAutomation/telegram_gifts_userbot/main/images/ControllerBot.png" alt="Controller bot screenshot" title="ControllerBot" width="480" /><br/></p>
 
 ## Требования
 
