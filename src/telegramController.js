@@ -14,6 +14,7 @@ class TelegramController {
      * @param {boolean} config.enabled - Whether the controller is enabled
      * @param {string} config.botToken - Telegram bot token
      * @param {string} config.channelId - Channel ID where stickers and messages will be sent
+     * @param {string} config.publicChannelId - Public channel ID where stickers and messages will be sent without purchase buttons
      * @param {import('./giftService')} giftService - Gift service instance
      * @param {import('./logger').Logger} logger - Logger instance
      * @param {import('./clientManager')} [clientManager] - Client manager instance for downloading stickers
@@ -123,15 +124,23 @@ class TelegramController {
     /**
      * Send a sticker for a new gift
      * @param {Object} gift - Gift object
+     * @param {boolean} [toPublicChannel=false] - Whether to send to the public channel
      * @returns {Promise<Object>} - Message object from Telegram
      */
-    async sendGiftSticker(gift) {
+    async sendGiftSticker(gift, toPublicChannel = false) {
+        const channelId = toPublicChannel ? this.config.publicChannelId : this.config.channelId;
+        const channelType = toPublicChannel ? 'public channel' : 'channel';
+        
         if (!this.bot || !this.config.enabled) {
             return { ok: false, error: 'Bot is not initialized or disabled' };
         }
+        
+        if (toPublicChannel && !this.config.publicChannelId) {
+            return { ok: false, error: 'Public channel ID is not set' };
+        }
     
         if (!this.isRunning) {
-            this.logger.warning('Attempting to send sticker while bot is not running. Will try anyway.');
+            this.logger.warning(`Attempting to send sticker to ${channelType} while bot is not running. Will try anyway.`);
         }
 
         try {
@@ -145,7 +154,7 @@ class TelegramController {
                 let tempFilename = null;
                 
                 try {
-                    this.logger.info('Using mtcute to download and send sticker in-memory');
+                    this.logger.info(`Using mtcute to download and send sticker to ${channelType} in-memory`);
                 
                     const client = this.clientManager.getCheckerClient();
                     if (!client) {
@@ -172,13 +181,12 @@ class TelegramController {
                     
                     const inputFile = new InputFile(stickerBuffer, `sticker_${Date.now()}.tgs`);
 
-
                     stickerMessage = await this.bot.api.sendSticker(
-                        this.config.channelId,
+                        channelId,
                         inputFile
                     );
                     
-                    this.logger.info('Sticker sent successfully using in-memory approach');
+                    this.logger.info(`Sticker sent to ${channelType} successfully using in-memory approach`);
                     
                     try {
                         fs.unlinkSync(tempFilename);
@@ -188,8 +196,8 @@ class TelegramController {
                     }
                     
                 } catch (mtcuteError) {
-                    this.logger.error('Error using mtcute in-memory approach:', mtcuteError);
-                    this.logger.warning('Falling back to direct fileId approach');
+                    this.logger.error(`Error using mtcute in-memory approach for ${channelType}:`, mtcuteError);
+                    this.logger.warning(`Falling back to direct fileId approach for ${channelType}`);
                     
                     // Clean up the temporary file if it exists
                     if (tempFilename && fs.existsSync(tempFilename)) {
@@ -202,23 +210,23 @@ class TelegramController {
                     }
                 
                     stickerMessage = await this.bot.api.sendSticker(
-                        this.config.channelId,
+                        channelId,
                         gift.sticker.fileId
                     );
                 }
             } else {
-                this.logger.info('ClientManager not available, using direct fileId approach');
+                this.logger.info(`ClientManager not available, using direct fileId approach for ${channelType}`);
                 stickerMessage = await this.bot.api.sendSticker(
-                    this.config.channelId,
+                    channelId,
                     gift.sticker.fileId
                 );
             }
 
-            await this.sendGiftInfo(gift, stickerMessage.message_id);
 
+            await this.sendGiftInfo(gift, stickerMessage.message_id, toPublicChannel);
             return { ok: true, message: stickerMessage };
         } catch (error) {
-            this.logger.error('Error sending gift sticker:', error);
+            this.logger.error(`Error sending gift sticker to ${channelType}:`, error);
             return { ok: false, error: error.message };
         }
     }
@@ -227,36 +235,48 @@ class TelegramController {
      * Send gift information as a reply to a sticker
      * @param {Object} gift - Gift object
      * @param {number} replyToMessageId - Message ID to reply to
+     * @param {boolean} [toPublicChannel=false] - Whether to send to the public channel (without purchase buttons)
      * @returns {Promise<Object>} - Message object from Telegram
      * @private
      */
-    async sendGiftInfo(gift, replyToMessageId) {
+    async sendGiftInfo(gift, replyToMessageId, toPublicChannel = false) {
+        const channelId = toPublicChannel ? this.config.publicChannelId : this.config.channelId;
+        const channelType = toPublicChannel ? 'public channel' : 'channel';
+        
         if (!this.bot || !this.config.enabled) {
             return { ok: false, error: 'Bot is not initialized or disabled' };
         }
         
+        if (toPublicChannel && !this.config.publicChannelId) {
+            return { ok: false, error: 'Public channel ID is not set' };
+        }
+        
         if (!this.isRunning) {
-            this.logger.warning('Attempting to send gift info while bot is not running. Will try anyway.');
+            this.logger.warning(`Attempting to send gift info to ${channelType} while bot is not running. Will try anyway.`);
         }
 
         try {
             const messageText = this.formatGiftInfo(gift);
 
-            const keyboard = this.createPurchaseKeyboard(gift.id);
+            // Only include purchase buttons for the regular channel
+            const options = {
+                reply_to_message_id: replyToMessageId,
+                parse_mode: 'HTML'
+            };
+            
+            if (!toPublicChannel) {
+                options.reply_markup = this.createPurchaseKeyboard(gift.id);
+            }
 
             const infoMessage = await this.bot.api.sendMessage(
-                this.config.channelId,
+                channelId,
                 messageText,
-                {
-                    reply_to_message_id: replyToMessageId,
-                    parse_mode: 'HTML',
-                    reply_markup: keyboard
-                }
+                options
             );
 
             return { ok: true, message: infoMessage };
         } catch (error) {
-            this.logger.error('Error sending gift info:', error);
+            this.logger.error(`Error sending gift info to ${channelType}:`, error);
             return { ok: false, error: error.message };
         }
     }
@@ -268,17 +288,29 @@ class TelegramController {
      * @private
      */
     formatGiftInfo(gift) {
-        let message = `<b>Gift Information:</b>\n\n`;
-        message += `ID: ${gift.id}\n`;
-        message += `Title: ${gift.title || 'Unknown'}\n`;
-        message += `Purchase Stars: ${gift.purchaseStars || 'N/A'}\n`;
+        // https://github.com/mtcute/mtcute/blob/master/packages/core/src/highlevel/types/premium/stars-gift.ts#L30
+        let message = `<b>🤯 Released new gift:</b>\n\n`;
+        message += `Title: <b>${gift.title || 'Unknown'}</b>\n`;
+        message += `Price: <b>${gift.purchaseStars || 'N/A'} ⭐️</b>\n`;
         
         if (gift.availability) {
-            message += `Availability: ${gift.availability.remains || 0}/${gift.availability.total || 0}\n`;
+            message += `Max supply: <b>${gift.availability.total || 'unlimited'}</b>\n\n`;
         }
-        
+
+        if (gift.isPremiumOnly) {
+            message += `❗️ <b>For premium users only</b>\n`
+        }
+
+        if (gift.perUserAvailability) {
+            message += `❗️ <b>${gift.availability.total} per one user</b>\n`
+        }
+
+        if (gift.upgradeStars !== null) {
+            message += '️❗️ <b>Upgrade available</b>\n'
+        }
+
         if (gift.releasedBy) {
-            message += `Released By: ${gift.releasedBy}\n`;
+            message += `❗️ <b>Released by @${gift.releasedBy.username}</b>\n`;
         }
 
         return message;

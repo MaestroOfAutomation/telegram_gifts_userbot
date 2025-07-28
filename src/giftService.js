@@ -187,7 +187,6 @@ class GiftService {
                 'is not found in local cache',
             ];
 
-            // Attempt to purchase the specified quantity of gifts
             let successCount = 0;
             let failureCount = 0;
             
@@ -206,7 +205,6 @@ class GiftService {
                 } else {
                     failureCount++;
                     
-                    // If we hit a non-retryable error, stop trying to purchase more gifts with this client
                     if (result.shouldStopRetrying) {
                         this.logger.warning(
                             `Stopping further gift purchases with account ${userIdentifier} due to non-retryable error`,
@@ -376,6 +374,15 @@ class GiftService {
             
             if (!result.ok) {
                 this.logger.error(`Failed to send gift notification: ${result.error}`);
+            }
+
+            if (this.telegramController.config.publicChannelId) {
+                this.logger.info(`Sending notification to public channel for new gift: ${gift.title} (ID: ${gift.id})`);
+                const publicResult = await this.telegramController.sendGiftSticker(gift, true);
+                
+                if (!publicResult.ok) {
+                    this.logger.error(`Failed to send gift notification to public channel: ${publicResult.error}`);
+                }
             }
         } catch (error) {
             this.logger.error('Error sending gift notification:', error);

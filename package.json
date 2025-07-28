@@ -11,8 +11,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@mtcute/node": "^0.25.2",
-    "@mtcute/core": "^0.25.5",
+    "@mtcute/node": "^0.25.6",
+    "@mtcute/core": "^0.25.6",
     "dotenv": "^17.2.0",
     "grammy": "^1.37.0",
     "uuid": "^11.1.0"

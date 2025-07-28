@@ -56,6 +56,7 @@ const telegramChannelIds = configData.notifications?.channelIds || {};
 
 const telegramControllerBotToken = configData.controller?.botToken;
 const telegramControllerChannelId = configData.controller?.channelId;
+const telegramControllerPublicChannelId = configData.controller?.publicChannelId;
 
 const config = {
     maxGiftSupply: configData.maxGiftSupply || 2000,
@@ -72,7 +73,8 @@ const config = {
     controller: {
         enabled: !!telegramControllerBotToken && !!telegramControllerChannelId,
         botToken: telegramControllerBotToken,
-        channelId: telegramControllerChannelId
+        channelId: telegramControllerChannelId,
+        publicChannelId: telegramControllerPublicChannelId
     }
 };
 

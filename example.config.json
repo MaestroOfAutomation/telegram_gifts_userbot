@@ -29,6 +29,7 @@
   },
   "controller": {
     "botToken": "your_controller_bot_token_here",
-    "channelId": "-100000000004"
+    "channelId": "-100000000004",
+    "publicChannelId": "-100000000005"
   }
 }
