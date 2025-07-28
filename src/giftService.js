@@ -360,6 +360,7 @@ class GiftService {
 
     /**
      * Notify about a new gift via Telegram controller
+     * Sends notifications asynchronously to both regular and public channels (if configured)
      * @param {Object} gift - Gift object
      * @returns {Promise<void>}
      */
@@ -370,22 +371,43 @@ class GiftService {
 
         try {
             this.logger.info(`Sending notification for new gift: ${gift.title} (ID: ${gift.id})`);
-            const result = await this.telegramController.sendGiftSticker(gift);
             
-            if (!result.ok) {
-                this.logger.error(`Failed to send gift notification: ${result.error}`);
-            }
-
+            const regularChannelPromise = this.telegramController.sendGiftSticker(gift)
+                .then(result => {
+                    if (!result.ok) {
+                        this.logger.error(`Failed to send gift notification: ${result.error}`);
+                    }
+                    return result;
+                })
+                .catch(error => {
+                    this.logger.error('Error sending gift notification to regular channel:', error);
+                    return { ok: false, error: error.message };
+                });
+            
+            const promises = [regularChannelPromise];
+            
             if (this.telegramController.config.publicChannelId) {
                 this.logger.info(`Sending notification to public channel for new gift: ${gift.title} (ID: ${gift.id})`);
-                const publicResult = await this.telegramController.sendGiftSticker(gift, true);
                 
-                if (!publicResult.ok) {
-                    this.logger.error(`Failed to send gift notification to public channel: ${publicResult.error}`);
-                }
+                const publicChannelPromise = this.telegramController.sendGiftSticker(gift, true)
+                    .then(publicResult => {
+                        if (!publicResult.ok) {
+                            this.logger.error(`Failed to send gift notification to public channel: ${publicResult.error}`);
+                        }
+                        return publicResult;
+                    })
+                    .catch(error => {
+                        this.logger.error('Error sending gift notification to public channel:', error);
+                        return { ok: false, error: error.message };
+                    });
+                
+                promises.push(publicChannelPromise);
             }
+            
+            await Promise.all(promises);
+            
         } catch (error) {
-            this.logger.error('Error sending gift notification:', error);
+            this.logger.error('Error in notifyNewGift:', error);
         }
     }
 }
