@@ -108,9 +108,10 @@ class GiftService {
      * Purchase gifts using all available clients
      * @param {Array|string} giftsOrGiftId - Array of gift objects or a single gift ID
      * @param {number} [quantity=0] - Number of gifts to purchase (0 means all available)
+     * @param {boolean} [isManual=false] - Whether the purchase was triggered manually
      * @returns {Promise<void>}
      */
-    async purchaseGiftsWithAllClients(giftsOrGiftId, quantity = 0) {
+    async purchaseGiftsWithAllClients(giftsOrGiftId, quantity = 0, isManual = false) {
         const clients = this.clientManager.getAllClients();
         let gifts = [];
 
@@ -148,7 +149,7 @@ class GiftService {
             const maxGiftsToBuy = quantity || this.config.maxGiftsToBuy || 1;
 
             for (const client of clients) {
-                purchasePromises.push(this.purchaseGift(client, giftOption, maxGiftsToBuy));
+                purchasePromises.push(this.purchaseGift(client, giftOption, maxGiftsToBuy, isManual));
             }
 
             await Promise.allSettled(purchasePromises);
@@ -160,12 +161,13 @@ class GiftService {
      * @param {import('@mtcute/node').TelegramClient} client
      * @param {Object} giftOption
      * @param {number} [quantity=1] - Number of gifts to purchase with this client
+     * @param {boolean} [isManual=false] - Whether this purchase was triggered manually
      * @returns {Promise<void>}
      */
-    async purchaseGift(client, giftOption, quantity = 1) {
+    async purchaseGift(client, giftOption, quantity = 1, isManual = false) {
         try {
             const me = this.clientManager.getUserInfo(client);
-            const targetPeerId = this.clientManager.getTargetPeerId(client);
+            const targetPeerId = this.clientManager.getTargetPeerId(client, isManual);
             const userIdentifier = me.username || me.id;
 
             this.logger.warning(

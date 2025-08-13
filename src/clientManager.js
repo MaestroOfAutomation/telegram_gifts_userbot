@@ -212,14 +212,24 @@ class ClientManager {
     /**
      * Get the target peer ID for a specific client
      * @param {TelegramClient} client
+     * @param {boolean} isManual
      * @returns {BigInt} The target peer ID for the client
      */
-    getTargetPeerId(client) {
+    getTargetPeerId(client, isManual = false) {
         const account = this.clientsMap.get(client);
         if (!account) {
             throw new Error('Client not found in client manager');
         }
-        return account.targetPeerId;
+
+        let targetPeerId;
+        if (isManual && account.manualPeerId) {
+            targetPeerId = account.manualPeerId;
+        }
+        else {
+            targetPeerId = account.targetPeerId;
+        }
+
+        return targetPeerId;
     }
 
     /**

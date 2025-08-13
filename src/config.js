@@ -41,6 +41,7 @@ function processTelegramAccounts() {
         return {
             phoneNumber: account.phoneNumber,
             targetPeerId: BigInt(account.targetPeerId),
+            manualPeerId: account.manualPeerId ? BigInt(account.manualPeerId) : null,
             apiId: account.apiId,
             apiHash: account.apiHash,
             proxy: account.proxy

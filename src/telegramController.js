@@ -60,7 +60,7 @@ class TelegramController {
 
                 if (action === 'purchase') {
                     const quantityNum = quantity === 'all' ? 0 : parseInt(quantity, 10);
-                    await this.giftService.purchaseGiftsWithAllClients(giftId, quantityNum);
+                    await this.giftService.purchaseGiftsWithAllClients(giftId, quantityNum, true);
                     
                     await ctx.reply(`Started purchase of ${quantity === 'all' ? 'all available' : quantity} units of gift ${giftId}`);
                 }
