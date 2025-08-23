@@ -302,7 +302,7 @@ class TelegramController {
         }
 
         if (gift.perUserAvailability) {
-            message += `❗️ <b>${gift.availability.total} per one user</b>\n`
+            message += `❗️ <b>${gift.perUserAvailability.total} per one user</b>\n`
         }
 
         if (gift.upgradeStars !== null) {
